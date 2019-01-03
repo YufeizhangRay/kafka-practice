@@ -69,7 +69,7 @@ Kafka 的基本操作
 ```
 ./kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 - -partitions 1 --topic test
 ```
-Replication-factor 表示该 topic 需要在不同的 broker 中保存几份，这里设置 成 1，表示在两个 broker 中保存两份。  
+Replication-factor 表示该 topic 需要在不同的 broker 中保存几份，这里设置成 1，表示在两个 broker 中保存两份。  
 Partitions 表示分区数。  
 查看 topic  
 ```
@@ -90,9 +90,10 @@ Partitions 表示分区数。
 安装集群环境  
 修改 server.properties 配置   
 >1.修改 server.properties.broker.id=0 / 1  
->2.修改 server.properties 修改成本机 IP advertised.listeners=PLAINTEXT://192.168.188.138:9092  
+>2.修改 server.properties 修改成本机 IP  
+advertised.listeners=PLAINTEXT://192.168.188.138:9092  
   
-当 Kafka broker 启动时，它会在 ZK 上注册自己的 IP 和端口号，客户端就通过 这个 IP 和端口号来连接。  
+当 Kafka broker 启动时，它会在 ZK 上注册自己的 IP 和端口号，客户端就通过这个 IP 和端口号来连接。  
 
 ### 配置信息分析  
   
@@ -102,7 +103,7 @@ acks
 acks 配置表示 producer 发送消息到 broker 上以后的确认值。有三个可选项 
 >0:表示producer不需要等待broker的消息确认。这个选项时延最小但同时风险最大(因为当 server 宕机时，数据将会丢失)。  
 >1:表示producer只需要获得kafka集群中的leader节点确认即可，这个选择时延较小同时确保了 leader 节点确认接收成功。  
->all(-1):需要ISR中所有的Replica给予接收确认，速度最慢，安全性最高，但是由于 ISR 可能会缩小到仅包含一个 Replica，所以设置参数为 all 并不能一定避免数据丢失。  
+>all(-1):需要 ISR 中所有的 Replica 给予接收确认，速度最慢，安全性最高，但是由于 ISR 可能会缩小到仅包含一个 Replica，所以设置参数为 all 并不能一定避免数据丢失。  
   
 batch.size  
 生产者发送多个消息到 broker 上的同一个分区时，为了减少网络请求带来的性能开销，通过批量的方式来提交消息，可以通过这个参数来控制批量提交的字节数大小，默认大小是 16384byte，也就是 16kb，意味着当一批消息大小达到指定的 batch.size 的时候会统一发送。  
@@ -167,15 +168,17 @@ kafka 消息分发策略
 消费端如何消费指定的分区  
 通过下面的代码，就可以消费指定该 topic 下的 0 号分区。 其他分区的数据就无法接收
 ```
-//消费指定分区的时候，不需要再订阅 //kafkaConsumer.subscribe(Collections.singleto nList(topic));
+//消费指定分区的时候，不需要再订阅 
+//kafkaConsumer.subscribe(Collections.singleto nList(topic));
 //消费指定的分区
-TopicPartition topicPartition=new TopicPartition(topic,0); kafkaConsumer.assign(Arrays.asList(topicPartit ion));
+TopicPartition topicPartition=new TopicPartition(topic,0); 
+kafkaConsumer.assign(Arrays.asList(topicPartit ion));
 ```
 ### 消息的消费原理  
   
 kafka 消息消费原理演示  
-在实际生产过程中，每个 topic 都会有多个 partitions，多个 partitions 的好处在于，一方面能够对 broker 上的数据进行分片有效减少了消息的容量从而提升 io 性能。另外一方面，为了提高消费端的消费能力，一般会通过多个 consumer 去消费同一个 topic ，也就是消费端的负载均衡机制。我们接下来要了解的，在多个 partition 以 及多个 consumer 的情况下，消费者是如何消费消息的。  
-kafka 存在 consumer group 的概念，也就是 group.id 一样的 consumer，这些 consumer 属于一个 consumer group，组内的所有消费者协调在一起来消费订阅主题的所有分区。当然每一个分区只能由同一个消费组内的 consumer 来消费，那么同一个 consumer group 里面的 consumer 是怎么去分配该消费哪个分区里的数据的呢?如下图所示，3 个分区，3 个消费者，那么哪个消费者消分哪个分区?  
+在实际生产过程中，每个 topic 都会有多个 partitions，多个 partitions 的好处在于，一方面能够对 broker 上的数据进行分片，有效减少了消息的容量从而提升 io 性能。另外一方面，为了提高消费端的消费能力，一般会通过多个 consumer 去消费同一个 topic ，也就是消费端的负载均衡机制。我们接下来要了解的，在多个 partition 以 及多个 consumer 的情况下，消费者是如何消费消息的。  
+kafka 存在 consumer group 的概念，也就是 group.id 一样的 consumer，这些 consumer 属于一个 consumer group，组内的所有消费者协调在一起来消费订阅主题的所有分区。当然每一个分区只能由同一个消费组内的 consumer 来消费，那么同一个 consumer group 里面的 consumer 是怎么去分配该消费哪个分区里的数据的呢？如下图所示，3 个分区，3 个消费者，那么哪个消费者消分哪个分区?  
 ![](https://github.com/YufeizhangRay/image/blob/master/kafka/%E5%88%86%E7%89%87.jpeg)  
    
 对于上面这个图来说，这 3 个消费者会分别消费 test 这个 topic 的 3 个分区，也就是每个 consumer 消费一个 partition。  
@@ -203,7 +206,7 @@ Range 策略是对每个主题而言的，首先对同一个主题里面 的分�
 可以看出，C1-0 消费者线程比其他消费者线程多消费了 2 个分区，这就是 Range strategy 的一个很明显的弊端。  
   
 RoundRobin strategy(轮询分区)  
-轮询分区策略是把所有 partition 和所有 consumer 线程都列出来，然后按照 hashcode 进行排序。最后通过轮询算 法分配 partition 给消费线程。如果所有 consumer 实例的订阅是相同的，那么 partition 会均匀分布。 在我们的例子里面，假如按照 hashCode 排序完的 topic- partitions 组依次为 T1-5, T1-3, T1-0, T1-8, T1-2, T1-1, T1-4,T1-7, T1-6, T1-9，我们的消费者线程排序为 C1-0, C1-1, C2- 0, C2-1，最后分区分配的结果为:  
+轮询分区策略是把所有 partition 和所有 consumer 线程都列出来，然后按照 hashcode 进行排序。最后通过轮询算 法分配 partition 给消费线程。如果所有 consumer 实例的订阅是相同的，那么 partition 会均匀分布。在我们的例子里面，假如按照 hashCode 排序完的 topic- partitions 组依次为 T1-5, T1-3, T1-0, T1-8, T1-2, T1-1, T1-4,T1-7, T1-6, T1-9，我们的消费者线程排序为 C1-0, C1-1, C2- 0, C2-1，最后分区分配的结果为:  
 >C1-0 将消费 T1-5, T1-2, T1-6 分区;  
 >C1-1 将消费 T1-3, T1-1, T1-9 分区;  
 >C2-0 将消费 T1-0, T1-4 分区;  
@@ -221,15 +224,15 @@ RoundRobin strategy(轮询分区)
   
 kafka consuemr 的 rebalance 机制规定了一个 consumer group 下的所有 consumer 如何达成一致来分配订阅 topic 的每个分区。而具体如何执行分区策略，就是前面提到过的两种内置的分区策略。而 kafka 对于分配策略这块，提供了可插拔的实现方式，也就是说，除了这两种之外，我们还可以创建自己的分配机制。  
   
-谁来执行 Rebalance 以及管理 consumer 的 group 呢?  
+谁来执行 Rebalance 以及管理 consumer 的 group 呢？  
 Kafka 提供了一个角色:coordinator 来执行对于 consumer group 的管理。  
-当 consumer group 的 第一个 consumer 启动的时候，它会去和 kafka server 确定谁是它们组的 coordinator。之后该 group 内的所有成员都会和该coordinator 进行协调通信。  
+当 consumer group 的第一个 consumer 启动的时候，它会去和 kafka server 确定谁是它们组的 coordinator。之后该 group 内的所有成员都会和该coordinator 进行协调通信。  
 
 如何确定 coordinator  
-consumer group 如何确定自己的 coordinator 是谁呢, 消费者向 kafka 集群中的任意一个 broker 发送一个 GroupCoordinatorRequest 请求，服务端会返回一个负载最小的 broker 节点的 id，并将该 broker 设置为 coordinator。  
+consumer group 如何确定自己的 coordinator 是谁呢？消费者向 kafka 集群中的任意一个 broker 发送一个 GroupCoordinatorRequest 请求，服务端会返回一个负载最小的 broker 节点的 id，并将该 broker 设置为 coordinator。  
   
 JoinGroup 的过程  
-在 rebalance 之前，需要保证 coordinator 是已经确定好了的，整个 rebalance 的过程分为两个步骤，Join 和 Sync join: 表示加入到 consumer group 中，在这一步中，所有的成员都会向 coordinator 发送 joinGroup 的请求。一旦所有成员都发送了 joinGroup 请求，那么 coordinator 会选择一个 consumer 担任 leader 角色，并把组成员信息和订阅信息发送消费者。
+在 rebalance 之前，需要保证 coordinator 是已经确定好了的，整个 rebalance 的过程分为两个步骤，Join 和 Sync join。表示加入到 consumer group 中，在这一步中，所有的成员都会向 coordinator 发送 joinGroup 的请求。一旦所有成员都发送了 joinGroup 请求，那么 coordinator 会选择一个 consumer 担任 leader 角色，并把组成员信息和订阅信息发送消费者。
 ![](https://github.com/YufeizhangRay/image/blob/master/kafka/%E7%BB%93%E7%BB%84.jpeg)  
   
 >protocol_metadata: 序列化后的消费者的订阅信息  
@@ -287,7 +290,7 @@ sh kafka-simple-consumer-shell.sh --topic __consumer_offsets --partition 35 --br
 了解到这里的时候，再结合前面讲的消息分发策略，就应该能明白消息发送到 broker 上，消息会保存到哪个分区中，并且消费端应该消费哪些分区的数据了。  
   
 消息写入的性能  
-我们现在大部分企业仍然用的是机械结构的磁盘，如果把消息以随机的方式写入到磁盘，那么磁盘首先要做的就是寻址，也就是定位到数据所在的物理地址，在磁盘上就要找到对应的柱面、磁头以及对应的扇区；这个过程相对内存来说会消耗大量时间，为了规避随机读写带来的时间消耗，kafka 采用顺序写的方式存储数据。即使是这样，频繁的 I/O 操作仍然会造成磁盘的性能瓶颈，所以 kafka 还有一个性能策略  
+我们现在大部分企业仍然用的是机械结构的磁盘，如果把消息以随机的方式写入到磁盘，那么磁盘首先要做的就是寻址，也就是定位到数据所在的物理地址，在磁盘上就要找到对应的柱面、磁头以及对应的扇区；这个过程相对内存来说会消耗大量时间，为了规避随机读写带来的时间消耗，kafka 采用顺序写的方式存储数据。即使是这样，频繁的 I/O 操作仍然会造成磁盘的性能瓶颈，所以 kafka 还有一个性能策略。  
   
 零拷贝  
 消息从发送到落地保存，broker 维护的消息日志本身就是文件目录，每个文件都是二进制保存，生产者和消费者使用相同的格式来处理。在消费者获取消息时，服务器先从 硬盘读取数据到内存，然后把内存中的数据原封不动的通过 socket 发送给消费者。虽然这个操作描述起来很简单，但实际上经历了很多步骤。
@@ -361,7 +364,7 @@ sh kafka-run-class.sh kafka.tools.DumpLogSegments --files /tmp/kafka- logs/test-
 查找的算法是  
 >1.根据 offset 的值，查找 segment 段中的 index 索引文件。由于索引文件命名是以上一个文件的最后一个 offset 进行命名的，所以使用二分查找算法能够根据 offset 快速定位到指定的索引文件。  
 >2.到索引文件后，根据 offset 进行定位，找到索引文件中的符合范围的索引。(kafka 采用稀疏索引的方式来提高查找性能)。  
->3.得到 position 以后，再到对应的 log 文件中，从 position 出开始查找 offset 对应的消息，将每条消息的 offset 与 目标 offset 进行比较，直到找到消息。  
+>3.得到 position 以后，再到对应的 log 文件中，从 position 出开始查找 offset 对应的消息，将每条消息的 offset 与目标 offset 进行比较，直到找到消息。  
   
 比如说，我们要查找 offset=2490 这条消息，那么先找到 00000000000000000000.index, 然后找到[2487,49111]这个索引，再到 log 文件中，根据 49111 这个 position 开始查找，比较每条消息的 offset 是否大于等于 2490。最后查找到对应的消息以后返回。  
   
@@ -425,7 +428,7 @@ Kafka 分区下有可能有很多个副本(replica)用于实现冗余，从而�
 >ISR 副本:包含了 leader 副本和所有与 leader 副本保持同步的 follower 副本。  
   
 每个 Kafka 副本对象都有两个重要的属性:LEO 和 HW。注意是所有的副本，而不只是 leader 副本。  
->LEO:即日志末端位移(log end offset)，记录了该副本底层日志(log)中下一条消息的位移值。注意是下一条消息!也就是说，如果 LEO=10，那么表示该副本保存了 10 条消息，位移值范围是[0, 9]。另外，leader LEO 和 follower LEO 的更新是有区别的。  
+>LEO:即日志末端位移(log end offset)，记录了该副本底层日志(log)中下一条消息的位移值。注意是下一条消息！也就是说，如果 LEO=10，那么表示该副本保存了 10 条消息，位移值范围是[0, 9]。另外，leader LEO 和 follower LEO 的更新是有区别的。  
 >HW:即上面提到的水位值。对于同一个副本对象而言，其 HW 值不会大于 LEO 值。小于等于 HW 值的所有消息都被 认为是“已备份”的(replicated)。同理，leader 副本和 follower 副本的 HW 更新是有区别的。  
   
 副本协同机制  
@@ -439,7 +442,7 @@ ISR 表示目前“可用且消息量与 leader 相差不多的副本集合，�
 >1.副本所在节点必须维持着与 zookeeper 的连接。  
 >2.副本最后一条消息的 offset 与 leader 副本的最后一条消息 的 offset 之间的差值不能超过指定的阈值 (replica.lag.time.max.ms)。  
   
-replica.lag.time.max.ms:如果该 follower 在此时间间隔内一直没有追上过 leader 的所有消息，则该 follower 就会被剔除 isr 列表。  
+replica.lag.time.max.ms:如果该 follower 在此时间间隔内一直没有追上过 leader 的所有消息，则该 follower 就会被剔除 ISR 列表。  
   
 HW&LEO  
 关于 follower 副本同步的过程中，还有两个关键的概念，HW(HighWatermark)和 LEO(Log End Offset)。这两个参数跟 ISR 集合紧密关联。HW 标记了一个特殊的 offset，当消费者处理消息的时候，只能拉取到 HW 之前的消息，HW 之后的消息对消费者来说是不可见的。也就是说，取 partition 对应 ISR 中最小的 LEO 作为 HW，consumer 最多只能消费到 HW 所在的位置。每个 replica 都有 HW， leader 和 follower 各自维护更新自己的 HW 的状态。一条消息只有被 ISR 里的所有 follower 都从 leader 复制过去才会被认为已提交。这样就避免了部分数据被写进了 leader，还没来得及被任何 follower 复制就宕机了，而造成数据丢失(Consumer 无法消费这些数据)。而对于 Producer 而言，它可以选择是否等待消息 commit，这可以通过 acks 来设置。这种机制确保了只要 ISR 有一个或以上的 follower，一条被 commit 的消息就不会丢失。  
@@ -489,7 +492,7 @@ follower 副本收到 response 以后
 >1.如果有数据则写本地日志，并且更新 LEO  
 2.更新 follower 的 HW 值  
   
-到目前为止，数据的同步就完成了，意味着消费端能够消 费 offset=0 这条消息。  
+到目前为止，数据的同步就完成了，意味着消费端能够消费 offset=0 这条消息。  
 
 follower 的 fetch 请求是直接从阻塞过程中触发  
 前面说过，由于 leader 副本暂时没有数据过来，所以 follower 的 fetch 会被阻塞，直到等待超时或者 leader 接收到新的数据。当 leader 收到请求以后会唤醒处于阻塞的 fetch 请求。处理过程基本上和前面说的一致
@@ -500,7 +503,7 @@ follower 的 fetch 请求是直接从阻塞过程中触发
 kafka 使用 HW 和 LEO 的方式来实现副本数据的同步，本身是一个好的设计，但是因为 HW 的值是在新的一轮 FETCH 中才会被更新，在这个地方会存在一个数据丢失的问题。当然这个丢失只出现在特定的背景下，我们来分析下这个过程为什么会出现数据丢失。  
   
 数据丢失的问题  
-前提:min.insync.replicas=1 的时候。设定 ISR 中的最小副本数是多少，默认值为 1, 当且仅当 acks 参数设置为-1 (表示需要所有副本确认)时，此参数才生效。表达的含义是，至少需要多少个副本同步才能表示消息是提交的所以，当 min.insync.replicas=1 的时候，一旦消息被写入 leader 端 log 即被认为是“已提交”，而延迟一轮 FETCH RPC 更新 HW 值的设计使得 follower HW 值是异步延迟更新的，倘若在这个过程中 leader 发生变更，那么成为新 leader 的 follower 的 HW 值就有可能是过期的，使得 clients 端认为是成功提交的消息被删除。  
+前提:min.insync.replicas=1 的时候。设定 ISR 中的最小副本数是多少，默认值为 1, 当且仅当 acks 参数设置为-1 (表示需要所有副本确认)时，此参数才生效。表达的含义是，至少需要多少个副本同步才能表示消息是提交的。所以，当 min.insync.replicas=1 的时候，一旦消息被写入 leader 端 log 即被认为是“已提交”，而延迟一轮 FETCH RPC 更新 HW 值的设计使得 follower HW 值是异步延迟更新的，倘若在这个过程中 leader 发生变更，那么成为新 leader 的 follower 的 HW 值就有可能是过期的，使得 clients 端认为是成功提交的消息被删除。  
 ![](https://github.com/YufeizhangRay/image/blob/master/kafka/%E6%95%B0%E6%8D%AE%E9%98%B2%E4%B8%A2%E5%A4%B1.jpeg)  
   
 数据丢失的解决方案  
@@ -517,6 +520,6 @@ kafka 使用 HW 和 LEO 的方式来实现副本数据的同步，本身是一�
 选择第一个“活”过来的 Replica 作为 Leader，而这个 Replica 不是 ISR 中的 Replica，那即使它并不保证已经包含了所有已 commit 的消息，它也会成为 Leader 而作为 consumer 的数据源。
   
 ### ISR的设计原理  
-在所有的分布式存储中，冗余备份是一种常见的设计方式，而常用的模式有同步复制和异步复制，按照 kafka 这个副本模型来说，如果采用同步复制，那么需要要求所有能工作的 Follower 副本都复制完，这条消息才会被认为提交成功，一旦有一个 follower 副本出现故障，就会导致 HW 无法完成递增，消息就无法提交，消费者就获取不到消息。这种情况下，故障的 Follower 副本会拖慢整个系统的性能，设置导致系统不可用如果采用异步复制，leader 副本收到生产者推送的消息后，就认为次消息提交成功。follower 副本则异步从 leader 副本同步。这种设计虽然避免了同步复制的问题，但是假设所有 follower 副本的同步速度都比较慢他们保存的消息量远远落后于 leader 副本。而此时 leader 副本所在的 broker 突然宕机，则会重新选举新的 leader 副本，而新的 leader 副本中没有原来 leader 副本的消息。这就出现了消息的丢失。  
+在所有的分布式存储中，冗余备份是一种常见的设计方式，而常用的模式有同步复制和异步复制。按照 kafka 这个副本模型来说，如果采用同步复制，那么需要要求所有能工作的 follower 副本都复制完，这条消息才会被认为提交成功，一旦有一个 follower 副本出现故障，就会导致 HW 无法完成递增，消息就无法提交，消费者就获取不到消息。这种情况下，故障的 follower 副本会拖慢整个系统的性能，甚至导致系统不可用。采用异步复制，leader 副本收到生产者推送的消息后，就认为次消息提交成功。follower 副本则异步从 leader 副本同步。这种设计虽然避免了同步复制的问题，但是假设所有 follower 副本的同步速度都比较慢他们保存的消息量远远落后于 leader 副本。而此时 leader 副本所在的 broker 突然宕机，则会重新选举新的 leader 副本，而新的 leader 副本中没有原来 leader 副本的消息。这就出现了消息的丢失。  
 kafka 权衡了同步和异步的两种策略，采用 ISR 集合，巧妙解 决了两种方案的缺陷:当 follower 副本延迟过高，leader 副本则会把该 follower 副本提出 ISR 集合，消息依然可以快速提交。当 leader 副本所在的 broker 突然宕机，会优先将 ISR 集合中 follower 副本选举为 leader，新 leader 副本包含了 HW 之前 的全部消息，这样就避免了消息的丢失。
  
