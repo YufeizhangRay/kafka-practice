@@ -277,11 +277,11 @@ sh kafka-simple-consumer-shell.sh --topic __consumer_offsets --partition 35 --br
   
 消息的保存路径  
 消息发送端发送消息到 broker 上以后，消息是如何持久化的呢？那么接下来去分析下消息的存储。  
-首先我们需要了解的是，kafka 是使用日志文件的方式来保存生产者和发送者的消息，每条消息都有一个 offset 值来表示它在分区中的偏移量。Kafka 中存储的一般都是海量的消息数据，为了避免日志文件过大，Log 并不是直接对应在一个磁盘上的日志文件，而是对应磁盘上的一个目录，这个目录的明明规则是<topic_name>_<partition_id>   
-比如创建一个名为 firstTopic 的 topic，其中有 3 个 partition， 那么在 kafka 的数据目录(/tmp/kafka-log)中就有 3 个目 录，firstTopic-0~3。  
+首先我们需要了解的是，kafka 是使用日志文件的方式来保存生产者和发送者的消息，每条消息都有一个 offset 值来表示它在分区中的偏移量。Kafka 中存储的一般都是海量的消息数据，为了避免日志文件过大，Log 并不是直接对应在一个磁盘上的日志文件，而是对应磁盘上的一个目录，这个目录的命名规则是<topic_name>_<partition_id>   
+比如创建一个名为 firstTopic 的 topic，其中有 3 个 partition， 那么在 kafka 的数据目录(/tmp/kafka-log)中就有 3 个目录，firstTopic-0~3。  
 
 多个分区在集群中的分配  
-如果我们对于一个 topic，在集群中创建多个 partition，那 么 partition 是如何分布的呢?  
+如果我们对于一个 topic，在集群中创建多个 partition，那么 partition 是如何分布的呢?  
 >1.将所有 N Broker 和待分配的 i 个 Partition 排序  
 >2.将第 i 个 Partition 分配到第(i mod n)个 Broker 上  
   
@@ -293,7 +293,7 @@ sh kafka-simple-consumer-shell.sh --topic __consumer_offsets --partition 35 --br
 我们现在大部分企业仍然用的是机械结构的磁盘，如果把消息以随机的方式写入到磁盘，那么磁盘首先要做的就是寻址，也就是定位到数据所在的物理地址，在磁盘上就要找到对应的柱面、磁头以及对应的扇区；这个过程相对内存来说会消耗大量时间，为了规避随机读写带来的时间消耗，kafka 采用顺序写的方式存储数据。即使是这样，频繁的 I/O 操作仍然会造成磁盘的性能瓶颈，所以 kafka 还有一个性能策略。  
   
 零拷贝  
-消息从发送到落地保存，broker 维护的消息日志本身就是文件目录，每个文件都是二进制保存，生产者和消费者使用相同的格式来处理。在消费者获取消息时，服务器先从 硬盘读取数据到内存，然后把内存中的数据原封不动的通过 socket 发送给消费者。虽然这个操作描述起来很简单，但实际上经历了很多步骤。
+消息从发送到落地保存，broker 维护的消息日志本身就是文件目录，每个文件都是二进制保存，生产者和消费者使用相同的格式来处理。在消费者获取消息时，服务器先从硬盘读取数据到内存，然后把内存中的数据原封不动的通过 socket 发送给消费者。虽然这个操作描述起来很简单，但实际上经历了很多步骤。
 ![](https://github.com/YufeizhangRay/image/blob/master/kafka/%E6%8B%B7%E8%B4%9D.jpeg)  
   
 >操作系统将数据从磁盘读入到内核空间的页缓存  
@@ -391,7 +391,7 @@ Kafka 还提供了“日志压缩(Log Compaction)”功能，通过这个功能�
 ### partition的高可用副本机制  
   
 我们已经知道 Kafka 的每个 topic 都可以分为多个 partition， 并且多个 partition 会均匀分布在集群的各个节点下。虽然这种方式能够有效的对数据进行分片，但是对于每个 partition 来说，都是单点的，当其中一个 partition 不可用的时候，那么这部分消息就没办法消费。所以 kafka 为了提高 partition 的可靠性而提供了副本的概念(Replica)，通过副本机制来实现冗余备份。  
-每个分区可以有多个副本，并且在副本集合中会存在一个 leader 的副本，所有的读写请求都是由 leader 副本来进行处理。剩余的其他副本都做为 follower 副本，follower 副本会从 leader 副本同步消息日志。这个有点类似 zookeeper 中 leader 和 follower 的概念，但是具体的时间方式还是有比较大的差异。所以我们可以认为，副本集会存在一主多从的关系。  
+每个分区可以有多个副本，并且在副本集合中会存在一个 leader 的副本，所有的读写请求都是由 leader 副本来进行处理。剩余的其他副本都做为 follower 副本，follower 副本会从 leader 副本同步消息日志。这个有点类似 zookeeper 中 leader 和 follower 的概念，但是具体的实现方式还是有比较大的差异。所以我们可以认为，副本集会存在一主多从的关系。  
 一般情况下，同一个分区的多个副本会被均匀分配到集群中的不同 broker 上，当 leader 副本所在的 broker 出现故障后，可以重新选举新的 leader 副本继续对外提供服务。通过这样的副本机制来提高 kafka 集群的可用性。  
   
 副本分配算法  
@@ -418,7 +418,7 @@ get /brokers/topics/secondTopic/partitions/1/state
 leader 表示当前分区的 leader 是那个 broker-id。下图中绿色线条的表示该分区中的 leader 节点。其他节点就为 follower  
 ![](https://github.com/YufeizhangRay/image/blob/master/kafka/%E5%A4%87%E4%BB%BD%E4%B8%BB%E4%BB%8E.jpeg)  
   
-Kafka 提供了数据复制算法保证，如果 leader 发生故障或挂掉，一个新 leader 被选举并被接受客户端的消息成功写入。Kafka 确保从同步副本列表中选举一个副本为 leader；leader 负责维护和跟踪 ISR(in-Sync replicas，副本同步队列)中所有 follower 滞后的状态。当 producer 发送一条消息到 broker 后，leader 写入消息并复制到所有 follower。消息提交之后才被成功复制到所有的同步副本。  
+Kafka 提供了数据复制算法保证，如果 leader 发生故障或挂掉，一个新 leader 被选举并被接受客户端的消息成功写入。Kafka 确保从同步副本列表中选举一个副本为 leader；leader 负责维护和跟踪 ISR(in-sync replicas，副本同步队列)中所有 follower 滞后的状态。当 producer 发送一条消息到 broker 后，leader 写入消息并复制到所有 follower。消息提交之后才被成功复制到所有的同步副本。  
 需要注意的是，不能把 zookeeper 的 leader 和 follower 的同步机制和 kafka 副本的同步机制搞混了。虽然从思想层面来说是一样的，但是原理层面的实现是完全不同的。
   
 kafka 副本机制中的几个概念  
@@ -522,4 +522,5 @@ kafka 使用 HW 和 LEO 的方式来实现副本数据的同步，本身是一�
 ### ISR的设计原理  
 在所有的分布式存储中，冗余备份是一种常见的设计方式，而常用的模式有同步复制和异步复制。按照 kafka 这个副本模型来说，如果采用同步复制，那么需要要求所有能工作的 follower 副本都复制完，这条消息才会被认为提交成功，一旦有一个 follower 副本出现故障，就会导致 HW 无法完成递增，消息就无法提交，消费者就获取不到消息。这种情况下，故障的 follower 副本会拖慢整个系统的性能，甚至导致系统不可用。采用异步复制，leader 副本收到生产者推送的消息后，就认为次消息提交成功。follower 副本则异步从 leader 副本同步。这种设计虽然避免了同步复制的问题，但是假设所有 follower 副本的同步速度都比较慢他们保存的消息量远远落后于 leader 副本。而此时 leader 副本所在的 broker 突然宕机，则会重新选举新的 leader 副本，而新的 leader 副本中没有原来 leader 副本的消息。这就出现了消息的丢失。  
 kafka 权衡了同步和异步的两种策略，采用 ISR 集合，巧妙解 决了两种方案的缺陷:当 follower 副本延迟过高，leader 副本则会把该 follower 副本提出 ISR 集合，消息依然可以快速提交。当 leader 副本所在的 broker 突然宕机，会优先将 ISR 集合中 follower 副本选举为 leader，新 leader 副本包含了 HW 之前 的全部消息，这样就避免了消息的丢失。
- 
+  
+[返回顶部](#kafka-practice)
